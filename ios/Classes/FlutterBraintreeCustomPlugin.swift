@@ -3,7 +3,16 @@ import UIKit
 import Braintree
 import BraintreeDropIn
 
-public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPlugin, BTViewControllerPresentingDelegate {
+public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPlugin, BTViewControllerPresentingDelegate, BTThreeDSecureRequestDelegate {
+
+    private var completionBlock: FlutterResult!
+    private var applePayInfo = [String : Any]()
+    private var authorization: String!
+
+    public func onLookupComplete(_ request: BTThreeDSecureRequest, lookupResult result: BTThreeDSecureResult, next: @escaping () -> Void) {
+        next();
+    }
+
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "flutter_braintree.custom", binaryMessenger: registrar.messenger())
         
@@ -12,6 +21,8 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
     }
     
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        completionBlock = result
+
         guard !isHandlingResult else {
             returnAlreadyOpenError(result: result)
             return
@@ -24,6 +35,8 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
             isHandlingResult = false
             return
         }
+
+        self.authorization = authorization
         
         let client = BTAPIClient(authorization: authorization)
         
@@ -89,10 +102,41 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
                 self.handleResult(nonce: nonce, error: error, flutterResult: result)
                 self.isHandlingResult = false
             }
+        } else if call.method == "requestApplePayNonce" {
+            guard let applePayInfo = dict(for: "request", in: call) else {return}
+            self.applePayInfo = applePayInfo
+
+            setupApplePay(flutterResult: result)
         } else {
             result(FlutterMethodNotImplemented)
             self.isHandlingResult = false
         }
+    }
+
+    private func setupApplePay(flutterResult: FlutterResult) {
+        let paymentRequest = PKPaymentRequest()
+        if let supportedNetworksValueArray = applePayInfo["supportedNetworks"] as? [Int] {
+            paymentRequest.supportedNetworks = supportedNetworksValueArray.compactMap({ value in
+                return PKPaymentNetwork.mapRequestedNetwork(rawValue: value)
+            })
+        }
+        paymentRequest.merchantCapabilities = .capability3DS
+        paymentRequest.countryCode = applePayInfo["countryCode"] as! String
+        paymentRequest.currencyCode = applePayInfo["currencyCode"] as! String
+        paymentRequest.merchantIdentifier = applePayInfo["merchantIdentifier"] as! String
+        
+        guard let paymentSummaryItems = makePaymentSummaryItems(from: applePayInfo) else {
+            return;
+        }
+        paymentRequest.paymentSummaryItems = paymentSummaryItems;
+
+        guard let applePayController = PKPaymentAuthorizationViewController(paymentRequest: paymentRequest) else {
+            return
+        }
+        
+        applePayController.delegate = self
+        
+        UIApplication.shared.keyWindow?.rootViewController?.present(applePayController, animated: true, completion: nil)
     }
     
     private func handleResult(nonce: BTPaymentMethodNonce?, error: Error?, flutterResult: FlutterResult) {
@@ -111,5 +155,49 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
     
     public func paymentDriver(_ driver: Any, requestsDismissalOf viewController: UIViewController) {
         
+    }
+
+    private func handleApplePayResult(_ result: BTPaymentMethodNonce, flutterResult: FlutterResult) {
+        flutterResult(["paymentMethodNonce": buildPaymentNonceDict(nonce: result)])
+    }
+}
+
+// MARK: PKPaymentAuthorizationViewControllerDelegate
+extension FlutterBraintreeCustomPlugin: PKPaymentAuthorizationViewControllerDelegate {
+    public func paymentAuthorizationViewControllerDidFinish(_ controller: PKPaymentAuthorizationViewController) {
+        controller.dismiss(animated: true, completion: nil)
+    }
+    
+    @available(iOS 11.0, *)
+    public func paymentAuthorizationViewController(_ controller: PKPaymentAuthorizationViewController, didAuthorizePayment payment: PKPayment, handler completion: @escaping (PKPaymentAuthorizationResult) -> Void) {
+        guard let apiClient = BTAPIClient(authorization: authorization) else { return }
+        let applePayClient = BTApplePayClient(apiClient: apiClient)
+        
+        applePayClient.tokenizeApplePay(payment) { (tokenizedPaymentMethod, error) in
+            guard let paymentMethod = tokenizedPaymentMethod, error == nil else {
+                completion(PKPaymentAuthorizationResult(status: .failure, errors: nil))
+                return
+            }
+            
+            print(paymentMethod.nonce)
+            self.handleApplePayResult(paymentMethod, flutterResult: self.completionBlock)
+            completion(PKPaymentAuthorizationResult(status: .success, errors: nil))
+        }
+    }
+
+    public func paymentAuthorizationViewController(_ controller: PKPaymentAuthorizationViewController, didAuthorizePayment payment: PKPayment, completion: @escaping (PKPaymentAuthorizationStatus) -> Void) {
+        guard let apiClient = BTAPIClient(authorization: authorization) else { return }
+        let applePayClient = BTApplePayClient(apiClient: apiClient)
+        
+        applePayClient.tokenizeApplePay(payment) { (tokenizedPaymentMethod, error) in
+            guard let paymentMethod = tokenizedPaymentMethod, error == nil else {
+                completion(.failure)
+                return
+            }
+            
+            print(paymentMethod.nonce)
+            self.handleApplePayResult(paymentMethod, flutterResult: self.completionBlock)
+            completion(.success)
+        }
     }
 }
