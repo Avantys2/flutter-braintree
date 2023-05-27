@@ -57,4 +57,16 @@ class Braintree {
     if (result == null) return null;
     return BraintreePaymentMethodNonce.fromJson(result);
   }
+
+  static Future<BraintreePaymentMethodNonce?> requestGooglePayNonce(
+    String authorization,
+    BraintreeGooglePaymentRequest request,
+  ) async {
+    final result = await _kChannel.invokeMethod('requestGooglePayNonce', {
+      'authorization': authorization,
+      'request': request.toJson(),
+    });
+    if (result == null) return null;
+    return BraintreePaymentMethodNonce.fromJson(result);
+  }
 }
