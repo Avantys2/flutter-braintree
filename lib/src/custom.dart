@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 
 import 'request.dart';
@@ -56,6 +58,10 @@ class Braintree {
     });
     if (result == null) return null;
     return BraintreePaymentMethodNonce.fromJson(result);
+  }
+
+  static Future<bool> canMakePayments() async {
+    return await _kChannel.invokeMethod('canMakePayments');
   }
 
   static Future<BraintreePaymentMethodNonce?> requestGooglePayNonce(

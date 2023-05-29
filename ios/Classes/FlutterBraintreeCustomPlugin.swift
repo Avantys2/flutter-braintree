@@ -2,6 +2,7 @@ import Flutter
 import UIKit
 import Braintree
 import BraintreeDropIn
+import PassKit
 
 public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPlugin, BTViewControllerPresentingDelegate, BTThreeDSecureRequestDelegate {
 
@@ -107,6 +108,10 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
             self.applePayInfo = applePayInfo
 
             setupApplePay(flutterResult: result)
+        } else if call.method == "canMakePayments" {
+            let paymentNetworks: [PKPaymentNetwork] = [.visa, .masterCard, .amex, .discover]
+            let isAvailable = PKPaymentAuthorizationViewController.canMakePayments(usingNetworks: paymentNetworks)
+            result(isAvailable)
         } else {
             result(FlutterMethodNotImplemented)
             self.isHandlingResult = false

@@ -46,6 +46,8 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
                 requestPaypalNonce();
             } else if (type.equals("requestGooglePayNonce")) {
                 requestGooglePayNonce()
+            } else if (type.equals("canMakePayments")) {
+                canMakePayments()
             } else {
                 throw new Exception("Invalid request type: " + type);
             }
@@ -126,6 +128,13 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
         googlePayClient = new GooglePayClient(this, braintreeClient);
         googlePayClient.setListener(this);
         googlePayClient.requestPayment(this, googlePayRequest);
+    }
+
+    protected void canMakePayments() {
+        googlePayClient = new GooglePayClient(this, braintreeClient);
+        googlePayClient.isReadyToPay(this, (isReadyToPay, error) -> {
+            setResult(isReadyToPay);
+        });
     }
 
     @Override
