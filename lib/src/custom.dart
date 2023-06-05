@@ -57,7 +57,7 @@ class Braintree {
       'request': request.toJson(),
     });
     if (result == null) return null;
-    return BraintreePaymentMethodNonce.fromJson(result);
+    return BraintreePaymentMethodNonce.fromJson(result['paymentMethodNonce']);
   }
 
   static Future<bool> canMakePayments() async {
@@ -73,6 +73,6 @@ class Braintree {
       'request': request.toJson(),
     });
     if (result == null) return null;
-    return BraintreePaymentMethodNonce.fromJson(result);
+    return BraintreePaymentMethodNonce.fromJson(result['paymentMethodNonce']);
   }
 }
