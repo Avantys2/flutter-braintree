@@ -20,6 +20,7 @@ import com.braintreepayments.api.PayPalVaultRequest;
 import com.braintreepayments.api.PaymentMethodNonce;
 import com.braintreepayments.api.UserCanceledException;
 import com.braintreepayments.api.GooglePayListener;
+import com.google.android.gms.wallet.PaymentsClient;
 import com.google.android.gms.wallet.TransactionInfo;
 import com.google.android.gms.wallet.WalletConstants;
 
