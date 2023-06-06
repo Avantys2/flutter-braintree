@@ -39,6 +39,7 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
             Intent intent = getIntent();
             braintreeClient = new BraintreeClient(this, intent.getStringExtra("authorization"));
             String type = intent.getStringExtra("type");
+            System.out.print("Braintree:onCreate:type=" + type);
             if (type.equals("tokenizeCreditCard")) {
                 tokenizeCreditCard();
             } else if (type.equals("requestPaypalNonce")) {
@@ -53,6 +54,7 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
                 throw new Exception("Invalid request type: " + type);
             }
         } catch (Exception e) {
+            System.out.print("Braintree:onCreate:" + e.toString());
             Intent result = new Intent();
             result.putExtra("error", e);
             setResult(2, result);
