@@ -134,7 +134,9 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
     protected void canMakePayments() {
         GooglePayClient googlePayClient = new GooglePayClient(this, braintreeClient);
         googlePayClient.isReadyToPay(this, (isReadyToPay, error) -> {
-            setResult(isReadyToPay);
+            Intent result = new Intent();
+            result.putExtra("isReadyToPay", isReadyToPay);
+            setResult(RESULT_OK, result);
         });
     }
 
