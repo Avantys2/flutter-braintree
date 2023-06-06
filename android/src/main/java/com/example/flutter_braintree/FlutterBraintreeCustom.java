@@ -45,7 +45,7 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
                 payPalClient = new PayPalClient(this, braintreeClient);
                 payPalClient.setListener(this);
                 requestPaypalNonce();
-            } else if (type.equals("requestGooglePayNonce")) {
+            } else if (type.equals("requestGPayNonce")) {
                 requestGooglePayNonce();
             } else if (type.equals("canMakePayments")) {
                 canMakePayments();
@@ -116,6 +116,7 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
     }
 
     protected void requestGooglePayNonce() {
+        System.out.print("Braintree:requestGooglePayNonce");
         Intent intent = getIntent();
         GooglePayRequest googlePayRequest = new GooglePayRequest();
 
@@ -134,6 +135,7 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
     protected void canMakePayments() {
         GooglePayClient googlePayClient = new GooglePayClient(this, braintreeClient);
         googlePayClient.isReadyToPay(this, (isReadyToPay, error) -> {
+            System.out.print("Braintree:isReadyToPay:" + isReadyToPay);
             Intent result = new Intent();
             result.putExtra("isReadyToPay", isReadyToPay);
             setResult(RESULT_OK, result);
@@ -142,11 +144,13 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
 
     @Override
     public void onGooglePaySuccess(@NonNull PaymentMethodNonce paymentMethodNonce) {
+        System.out.print("Braintree:onGooglePaySuccess:" + paymentMethodNonce.toString());
         onPaymentMethodNonceCreated(paymentMethodNonce);
     }
 
     @Override
     public void onGooglePayFailure(@NonNull Exception error) {
+        System.out.print("Braintree:onGooglePayFailure:" + error.toString());
         if (error instanceof UserCanceledException) {
             if(((UserCanceledException) error).isExplicitCancelation()){
                 onCancel();
