@@ -19,6 +19,7 @@ import com.braintreepayments.api.PayPalRequest;
 import com.braintreepayments.api.PayPalVaultRequest;
 import com.braintreepayments.api.PaymentMethodNonce;
 import com.braintreepayments.api.UserCanceledException;
+import com.braintreepayments.api.GooglePayListener;
 import com.google.android.gms.wallet.TransactionInfo;
 import com.google.android.gms.wallet.WalletConstants;
 
@@ -124,14 +125,14 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
                 .setCurrencyCode(intent.getStringExtra("currencyCode"))
                 .build());
         googlePayRequest.setBillingAddressRequired(true);
-
-        googlePayClient = new GooglePayClient(this, braintreeClient);
+        
+        GooglePayClient googlePayClient = new GooglePayClient(this, braintreeClient);
         googlePayClient.setListener(this);
         googlePayClient.requestPayment(this, googlePayRequest);
     }
 
     protected void canMakePayments() {
-        googlePayClient = new GooglePayClient(this, braintreeClient);
+        GooglePayClient googlePayClient = new GooglePayClient(this, braintreeClient);
         googlePayClient.isReadyToPay(this, (isReadyToPay, error) -> {
             setResult(isReadyToPay);
         });
