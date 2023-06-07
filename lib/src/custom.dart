@@ -68,7 +68,7 @@ class Braintree {
     String authorization,
     BraintreeGooglePaymentRequest request,
   ) async {
-    final result = await _kChannel.invokeMethod('requestGPayNonce', {
+    final result = await _kChannel.invokeMethod('requestGooglePayNonce', {
       'authorization': authorization,
       'request': request.toJson(),
     });

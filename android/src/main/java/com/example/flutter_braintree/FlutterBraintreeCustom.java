@@ -46,7 +46,7 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
                 payPalClient = new PayPalClient(this, braintreeClient);
                 payPalClient.setListener(this);
                 requestPaypalNonce();
-            } else if (type.equals("requestGPayNonce")) {
+            } else if (type.equals("requestGooglePayNonce")) {
                 requestGooglePayNonce();
             } else if (type.equals("canMakePayments")) {
                 canMakePayments();
