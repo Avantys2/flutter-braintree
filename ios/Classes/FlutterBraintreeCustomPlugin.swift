@@ -184,7 +184,7 @@ extension FlutterBraintreeCustomPlugin: PKPaymentAuthorizationViewControllerDele
         
         applePayClient.tokenizeApplePay(payment) { (tokenizedPaymentMethod, error) in
             guard let paymentMethod = tokenizedPaymentMethod, error == nil else {
-                os_log("Braintree:%@", type: .error, error)
+                os_log("Braintree:%@", type: .error, String(describing: error))
                 completion(PKPaymentAuthorizationResult(status: .failure, errors: nil))
                 return
             }
@@ -201,7 +201,7 @@ extension FlutterBraintreeCustomPlugin: PKPaymentAuthorizationViewControllerDele
         
         applePayClient.tokenizeApplePay(payment) { (tokenizedPaymentMethod, error) in
             guard let paymentMethod = tokenizedPaymentMethod, error == nil else {
-                os_log("Braintree:%@", type: .error, error)
+                os_log("Braintree:%@", type: .error, String(describing: error))
                 completion(.failure)
                 return
             }
