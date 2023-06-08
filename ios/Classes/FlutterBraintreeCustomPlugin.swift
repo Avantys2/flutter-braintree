@@ -3,6 +3,7 @@ import UIKit
 import Braintree
 import BraintreeDropIn
 import PassKit
+import os
 
 public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPlugin, BTViewControllerPresentingDelegate, BTThreeDSecureRequestDelegate {
 
@@ -104,7 +105,7 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
                 self.isHandlingResult = false
             }
         } else if call.method == "requestApplePayNonce" {
-            print("Braintree:Handle:requestApplePayNonce")
+            os_log("Braintree:Handle:requestApplePayNonce", type: .debug)
             guard let applePayInfo = dict(for: "request", in: call) else {return}
             self.applePayInfo = applePayInfo
 
@@ -132,13 +133,13 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
         paymentRequest.merchantIdentifier = applePayInfo["merchantIdentifier"] as! String
         
         guard let paymentSummaryItems = makePaymentSummaryItems(from: applePayInfo) else {
-            print("Braintree:Handle:paymentSummaryItems is null")
+            os_log("Braintree:Handle:paymentSummaryItems is null", type: .error)
             return;
         }
         paymentRequest.paymentSummaryItems = paymentSummaryItems;
 
         guard let applePayController = PKPaymentAuthorizationViewController(paymentRequest: paymentRequest) else {
-            print("Braintree:Handle:applePayController is null")
+            os_log("Braintree:Handle:applePayController is null", type: .error)
             return
         }
         
@@ -183,12 +184,12 @@ extension FlutterBraintreeCustomPlugin: PKPaymentAuthorizationViewControllerDele
         
         applePayClient.tokenizeApplePay(payment) { (tokenizedPaymentMethod, error) in
             guard let paymentMethod = tokenizedPaymentMethod, error == nil else {
-                print(error)
+                os_log("Braintree:%@", type: .error, error)
                 completion(PKPaymentAuthorizationResult(status: .failure, errors: nil))
                 return
             }
             
-            print("Braintree:\(paymentMethod.nonce)")
+            os_log("Braintree:paymentMethodNonce=%@", type: .debug, paymentMethod.nonce)
             self.handleApplePayResult(paymentMethod, flutterResult: self.completionBlock)
             completion(PKPaymentAuthorizationResult(status: .success, errors: nil))
         }
@@ -200,12 +201,11 @@ extension FlutterBraintreeCustomPlugin: PKPaymentAuthorizationViewControllerDele
         
         applePayClient.tokenizeApplePay(payment) { (tokenizedPaymentMethod, error) in
             guard let paymentMethod = tokenizedPaymentMethod, error == nil else {
-                print(error)
+                os_log("Braintree:%@", type: .error, error)
                 completion(.failure)
                 return
             }
-            
-            print("Braintree:\(paymentMethod.nonce)")
+            os_log("Braintree:paymentMethodNonce=%@", type: .debug, paymentMethod.nonce)
             self.handleApplePayResult(paymentMethod, flutterResult: self.completionBlock)
             completion(.success)
         }
