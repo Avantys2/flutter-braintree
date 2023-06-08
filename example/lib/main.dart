@@ -35,6 +35,45 @@ class _MyAppState extends State<MyApp> {
     );
   }
 
+  Future<void> payWithApplePay(
+    double amount, {
+    String countryCode = 'US', // 🚧
+    String currencyCode = 'USD',
+  }) async {
+    final item = ApplePaySummaryItem(
+      amount: amount,
+      label: 'Total price',
+      type: ApplePaySummaryItemType.final_,
+    );
+
+    final merchantIdentifier = 'merchant.com.company.you_key_id';
+    final paymentSummaryItems = <ApplePaySummaryItem>[item];
+    final supportedNetworks = [
+      ApplePaySupportedNetworks.visa,
+      ApplePaySupportedNetworks.masterCard,
+      ApplePaySupportedNetworks.amex,
+      ApplePaySupportedNetworks.discover,
+    ];
+
+    const displayName = '';
+
+    final result = await Braintree.requestApplePayNonce(
+      tokenizationKey,
+      BraintreeApplePayRequest(
+        paymentSummaryItems: paymentSummaryItems,
+        displayName: displayName,
+        currencyCode: currencyCode,
+        countryCode: countryCode,
+        merchantIdentifier: merchantIdentifier,
+        supportedNetworks: supportedNetworks,
+      ),
+    );
+
+    if (result != null) {
+      showNonce(result);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -111,6 +150,12 @@ class _MyAppState extends State<MyApp> {
                 }
               },
               child: Text('TOKENIZE CREDIT CARD'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                payWithApplePay(80);
+              },
+              child: Text('Pay With Apple'),
             ),
             ElevatedButton(
               onPressed: () async {

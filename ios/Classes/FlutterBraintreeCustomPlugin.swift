@@ -105,7 +105,6 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
                 self.isHandlingResult = false
             }
         } else if call.method == "requestApplePayNonce" {
-            NSLog("Braintree:Handle:requestApplePayNonce")
             os_log("Braintree:Handle:requestApplePayNonce", type: .debug)
             guard let applePayInfo = dict(for: "request", in: call) else {return}
             self.applePayInfo = applePayInfo
@@ -134,14 +133,12 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
         paymentRequest.merchantIdentifier = applePayInfo["merchantIdentifier"] as! String
         
         guard let paymentSummaryItems = makePaymentSummaryItems(from: applePayInfo) else {
-            NSLog("Braintree:Handle:paymentSummaryItems is null")
             os_log("Braintree:Handle:paymentSummaryItems is null", type: .error)
             return;
         }
         paymentRequest.paymentSummaryItems = paymentSummaryItems;
 
         guard let applePayController = PKPaymentAuthorizationViewController(paymentRequest: paymentRequest) else {
-            NSLog("Braintree:Handle:applePayController is null")
             os_log("Braintree:Handle:applePayController is null", type: .error)
             return
         }
@@ -151,7 +148,7 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
         UIApplication.shared.keyWindow?.rootViewController?.present(applePayController, animated: true, completion: nil)
     }
     
-    private func handleResult(nonce: BTPaymentMethodNonce?, error: Error?, flutterResult: FlutterResult) {
+    private func handleResult(nonce: BTPaymentMethodNonce? = nil, error: Error? = nil, flutterResult: FlutterResult) {
         if error != nil {
             returnBraintreeError(result: flutterResult, error: error!)
         } else if nonce == nil {
@@ -177,17 +174,21 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
 // MARK: PKPaymentAuthorizationViewControllerDelegate
 extension FlutterBraintreeCustomPlugin: PKPaymentAuthorizationViewControllerDelegate {
     public func paymentAuthorizationViewControllerDidFinish(_ controller: PKPaymentAuthorizationViewController) {
+        isHandlingResult = false
+        os_log("Braintree: Apple Pay was canceled or couldn't to pay", type: .debug)
+        handleResult(nonce: nil, error: nil, flutterResult: completionBlock)
         controller.dismiss(animated: true, completion: nil)
     }
     
     @available(iOS 11.0, *)
     public func paymentAuthorizationViewController(_ controller: PKPaymentAuthorizationViewController, didAuthorizePayment payment: PKPayment, handler completion: @escaping (PKPaymentAuthorizationResult) -> Void) {
+        
+        self.isHandlingResult = false
         guard let apiClient = BTAPIClient(authorization: authorization) else { return }
         let applePayClient = BTApplePayClient(apiClient: apiClient)
         
         applePayClient.tokenizeApplePay(payment) { (tokenizedPaymentMethod, error) in
             guard let paymentMethod = tokenizedPaymentMethod, error == nil else {
-                NSLog("Braintree:%@", String(describing: error))
                 os_log("Braintree:%@", type: .error, String(describing: error))
                 completion(PKPaymentAuthorizationResult(status: .failure, errors: nil))
                 return
@@ -200,12 +201,13 @@ extension FlutterBraintreeCustomPlugin: PKPaymentAuthorizationViewControllerDele
     }
 
     public func paymentAuthorizationViewController(_ controller: PKPaymentAuthorizationViewController, didAuthorizePayment payment: PKPayment, completion: @escaping (PKPaymentAuthorizationStatus) -> Void) {
+        
+        self.isHandlingResult = false
         guard let apiClient = BTAPIClient(authorization: authorization) else { return }
         let applePayClient = BTApplePayClient(apiClient: apiClient)
         
         applePayClient.tokenizeApplePay(payment) { (tokenizedPaymentMethod, error) in
             guard let paymentMethod = tokenizedPaymentMethod, error == nil else {
-                NSLog("Braintree:%@", String(describing: error))
                 os_log("Braintree:%@", type: .error, String(describing: error))
                 completion(.failure)
                 return
