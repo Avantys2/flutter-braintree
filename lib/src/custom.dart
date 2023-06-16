@@ -73,6 +73,6 @@ class Braintree {
       'request': request.toJson(),
     });
     if (result == null) return null;
-    return BraintreePaymentMethodNonce.fromJson(result['paymentMethodNonce']);
+    return BraintreePaymentMethodNonce.fromJson(result);
   }
 }
