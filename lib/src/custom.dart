@@ -60,8 +60,68 @@ class Braintree {
     return BraintreePaymentMethodNonce.fromJson(result['paymentMethodNonce']);
   }
 
-  static Future<bool> canMakePayments() async {
-    return await _kChannel.invokeMethod('canMakePayments');
+  static Future<bool> userCanPay(
+    String authorization,
+  ) async {
+    if (Platform.isAndroid) {
+      return true;
+    }
+    final result = await _kChannel.invokeMethod('userCanPay', {
+      'authorization': authorization,
+    });
+    if (result == null) return false;
+    return result['isUserCanPay'];
+  }
+
+  static Future<BraintreePaymentMethodNonce?> requestPlatformPayNonce(
+    String authorization,
+    String amount,
+    String merchant,
+    String currencyCode,
+    String countryCode,
+  ) async {
+    if (Platform.isAndroid) {
+      final result = await Braintree.requestGooglePayNonce(
+        authorization,
+        BraintreeGooglePaymentRequest(
+          totalPrice: amount,
+          currencyCode: currencyCode,
+          googleMerchantID: merchant,
+        ),
+      );
+      return result;
+    } else if (Platform.isIOS) {
+      final item = ApplePaySummaryItem(
+        amount: double.parse(amount),
+        label: 'Total price',
+        type: ApplePaySummaryItemType.final_,
+      );
+
+      final paymentSummaryItems = <ApplePaySummaryItem>[item];
+      final supportedNetworks = [
+        ApplePaySupportedNetworks.visa,
+        ApplePaySupportedNetworks.masterCard,
+        ApplePaySupportedNetworks.amex,
+        ApplePaySupportedNetworks.discover,
+      ];
+
+      const displayName = '';
+
+      final result = await Braintree.requestApplePayNonce(
+        authorization,
+        BraintreeApplePayRequest(
+          paymentSummaryItems: paymentSummaryItems,
+          displayName: displayName,
+          currencyCode: currencyCode,
+          countryCode: countryCode,
+          merchantIdentifier: merchant,
+          supportedNetworks: supportedNetworks,
+        ),
+      );
+
+      return result;
+    }
+    return null;
   }
 
   static Future<BraintreePaymentMethodNonce?> requestGooglePayNonce(
