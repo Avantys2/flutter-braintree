@@ -108,12 +108,12 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
             os_log("Braintree:Handle:requestApplePayNonce", type: .debug)
             guard let applePayInfo = dict(for: "request", in: call) else {return}
             self.applePayInfo = applePayInfo
-
             setupApplePay(flutterResult: result)
-        } else if call.method == "canMakePayments" {
+        } else if call.method == "userCanPay" {
             let paymentNetworks: [PKPaymentNetwork] = [.visa, .masterCard, .amex, .discover]
             let isAvailable = PKPaymentAuthorizationViewController.canMakePayments(usingNetworks: paymentNetworks)
-            result(isAvailable)
+            self.isHandlingResult = false
+            result(["isUserCanPay" : isAvailable])
         } else {
             result(FlutterMethodNotImplemented)
             self.isHandlingResult = false
@@ -123,22 +123,33 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
     private func setupApplePay(flutterResult: FlutterResult) {
         let paymentRequest = PKPaymentRequest()
         if let supportedNetworksValueArray = applePayInfo["supportedNetworks"] as? [Int] {
-            paymentRequest.supportedNetworks = supportedNetworksValueArray.compactMap({ value in
+            let paymentNetworks: [PKPaymentNetwork] = supportedNetworksValueArray.compactMap({ value in
                 return PKPaymentNetwork.mapRequestedNetwork(rawValue: value)
             })
+            let isAvailable = PKPaymentAuthorizationViewController.canMakePayments(usingNetworks: paymentNetworks)
+            guard isAvailable else {
+                self.isHandlingResult = false
+                os_log("Braintree:Handle:is not available", type: .error)
+                return
+            }
+            
+            paymentRequest.supportedNetworks = paymentNetworks
         }
+        
         paymentRequest.merchantCapabilities = .capability3DS
         paymentRequest.countryCode = applePayInfo["countryCode"] as! String
         paymentRequest.currencyCode = applePayInfo["currencyCode"] as! String
         paymentRequest.merchantIdentifier = applePayInfo["merchantIdentifier"] as! String
         
         guard let paymentSummaryItems = makePaymentSummaryItems(from: applePayInfo) else {
+            self.isHandlingResult = false
             os_log("Braintree:Handle:paymentSummaryItems is null", type: .error)
             return;
         }
         paymentRequest.paymentSummaryItems = paymentSummaryItems;
 
         guard let applePayController = PKPaymentAuthorizationViewController(paymentRequest: paymentRequest) else {
+            self.isHandlingResult = false
             os_log("Braintree:Handle:applePayController is null", type: .error)
             return
         }
