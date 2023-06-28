@@ -27,6 +27,7 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
   private FlutterBraintreeDropIn dropIn;
 
   public static void registerWith(Registrar registrar) {
+    Log.d("Braintree", "registerWith");
     FlutterBraintreeDropIn.registerWith(registrar);
     final MethodChannel channel = new MethodChannel(registrar.messenger(), "flutter_braintree.custom");
     FlutterBraintreePlugin plugin = new FlutterBraintreePlugin();
@@ -37,6 +38,7 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
 
   @Override
   public void onAttachedToEngine(FlutterPluginBinding binding) {
+    Log.d("Braintree", "onAttachedToEngine");
     final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_braintree.custom");
     channel.setMethodCallHandler(this);
 
@@ -46,12 +48,14 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
 
   @Override
   public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+    Log.d("Braintree", "onDetachedFromEngine");
     dropIn.onDetachedFromEngine(binding);
     dropIn = null;
   }
 
   @Override
   public void onAttachedToActivity(ActivityPluginBinding binding) {
+    Log.d("Braintree", "onAttachedToActivity");
     activity = binding.getActivity();
     binding.addActivityResultListener(this);
     dropIn.onAttachedToActivity(binding);
@@ -59,12 +63,14 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
 
   @Override
   public void onDetachedFromActivityForConfigChanges() {
+    Log.d("Braintree", "onDetachedFromActivityForConfigChanges");
     activity = null;
     dropIn.onDetachedFromActivity();
   }
 
   @Override
   public void onReattachedToActivityForConfigChanges(ActivityPluginBinding binding) {
+    Log.d("Braintree", "onReattachedToActivityForConfigChanges");
     activity = binding.getActivity();
     binding.addActivityResultListener(this);
     dropIn.onReattachedToActivityForConfigChanges(binding);
@@ -72,12 +78,14 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
 
   @Override
   public void onDetachedFromActivity() {
+    Log.d("Braintree", "onDetachedFromActivity");
     activity = null;
     dropIn.onDetachedFromActivity();
   }
 
   @Override
   public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
+    Log.d("Braintree", "onMethodCall:" + call.method);
     if (activeResult != null) {
       result.error("already_running", "Cannot launch another custom activity while one is already running.", null);
       return;
@@ -130,6 +138,13 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
         activity.startActivityForResult(intent, CUSTOM_ACTIVITY_REQUEST_CODE);
         break;
       }
+      case "userCanPay": {
+        Intent intent = new Intent(activity, FlutterBraintreeCustom.class);
+        intent.putExtra("type", "userCanPay");
+        intent.putExtra("authorization", (String) call.argument("authorization"));
+        activity.startActivityForResult(intent, CUSTOM_ACTIVITY_REQUEST_CODE);
+        break;
+      }
       default:
         result.notImplemented();
         activeResult = null;
@@ -139,6 +154,7 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
 
   @Override
   public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
+    Log.d("Braintree", "onActivityResult:resultCode=" + resultCode + ":requestCode=" + requestCode);
     if (activeResult == null) {
       return false;
     }

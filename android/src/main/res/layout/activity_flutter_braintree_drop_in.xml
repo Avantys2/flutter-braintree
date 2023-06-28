@@ -5,8 +5,8 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:alpha="0.0"
-    android:visibility="invisible"
+    android:visibility="visible"
     tools:context=".FlutterBraintreeCustom"
-    tools:visibility="invisible">
+    tools:visibility="visible">
 
 </androidx.constraintlayout.widget.ConstraintLayout>
