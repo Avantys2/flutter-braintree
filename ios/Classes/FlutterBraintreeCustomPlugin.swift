@@ -6,15 +6,16 @@ import PassKit
 import os
 
 public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPlugin, BTViewControllerPresentingDelegate, BTThreeDSecureRequestDelegate {
-
+    
     private var completionBlock: FlutterResult!
+    private var client: BTAPIClient?
     private var applePayInfo = [String : Any]()
     private var authorization: String!
-
+    
     public func onLookupComplete(_ request: BTThreeDSecureRequest, lookupResult result: BTThreeDSecureResult, next: @escaping () -> Void) {
         next();
     }
-
+    
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "flutter_braintree.custom", binaryMessenger: registrar.messenger())
         
@@ -24,7 +25,7 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
     
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         completionBlock = result
-
+        
         guard !isHandlingResult else {
             returnAlreadyOpenError(result: result)
             return
@@ -37,10 +38,10 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
             isHandlingResult = false
             return
         }
-
+        
         self.authorization = authorization
         
-        let client = BTAPIClient(authorization: authorization)
+        self.client = BTAPIClient(authorization: authorization)
         
         if call.method == "requestPaypalNonce" {
             let driver = BTPayPalDriver(apiClient: client!)
@@ -89,26 +90,15 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
             }
             
         } else if call.method == "tokenizeCreditCard" {
-            let cardClient = BTCardClient(apiClient: client!)
-            
-            guard let cardRequestInfo = dict(for: "request", in: call) else {return}
-            
-            let card = BTCard()
-            card.number = cardRequestInfo["cardNumber"] as? String
-            card.expirationMonth = cardRequestInfo["expirationMonth"] as? String
-            card.expirationYear = cardRequestInfo["expirationYear"] as? String
-            card.cvv = cardRequestInfo["cvv"] as? String
-            card.cardholderName = cardRequestInfo["cardholderName"] as? String
-            
-            cardClient.tokenizeCard(card) { (nonce, error) in
-                self.handleResult(nonce: nonce, error: error, flutterResult: result)
-                self.isHandlingResult = false
-            }
+            setupTokenizedCard(call, result: result)
         } else if call.method == "requestApplePayNonce" {
             os_log("Braintree:Handle:requestApplePayNonce", type: .debug)
             guard let applePayInfo = dict(for: "request", in: call) else {return}
             self.applePayInfo = applePayInfo
             setupApplePay(flutterResult: result)
+        } else if call.method == "requestThreeDSecureCardNonce" {
+            os_log("Braintree:Handle:requestCardNonce", type: .debug)
+            setupCardNonce(call, result: result)
         } else if call.method == "userCanPay" {
             let paymentNetworks: [PKPaymentNetwork] = [.visa, .masterCard, .amex, .discover]
             let isAvailable = PKPaymentAuthorizationViewController.canMakePayments(usingNetworks: paymentNetworks)
@@ -119,7 +109,91 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
             self.isHandlingResult = false
         }
     }
-
+    
+    private func setupTokenizedCard(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        guard let client = self.client else { return }
+        
+        let cardClient = BTCardClient(apiClient: client)
+        
+        guard let cardRequestInfo = dict(for: "request", in: call) else {return}
+        
+        let card = BTCard()
+        card.number = cardRequestInfo["cardNumber"] as? String
+        card.expirationMonth = cardRequestInfo["expirationMonth"] as? String
+        card.expirationYear = cardRequestInfo["expirationYear"] as? String
+        card.cvv = cardRequestInfo["cvv"] as? String
+        card.cardholderName = cardRequestInfo["cardholderName"] as? String
+        
+        cardClient.tokenizeCard(card) { (nonce, error) in
+            self.handleResult(nonce: nonce, error: error, flutterResult: result)
+            self.isHandlingResult = false
+        }
+    }
+    
+    private func setupCardNonce(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        completionBlock = result
+        guard let client = self.client else { return }
+        
+        guard let cardInfo = dict(for: "request", in: call) else {
+            os_log("Braintree:setupCardNonce: request is null", type: .error)
+            return
+        }
+        
+        let paymentFlowClient = BTPaymentFlowDriver(apiClient: client)
+        paymentFlowClient.viewControllerPresentingDelegate = self
+        
+        let threeDSecureRequest = BTThreeDSecureRequest()
+        
+        if let email = cardInfo["email"] as? String {
+            threeDSecureRequest.email = email
+        }
+        
+        threeDSecureRequest.versionRequested = .version2
+        
+        if let token = cardInfo["token"] as? String {
+            threeDSecureRequest.nonce = token
+        }
+        
+        if let billingAddress = dict(for: "billingAddress", in: call) {
+            let address = BTThreeDSecurePostalAddress()
+            address.givenName = billingAddress["givenName"] as? String;
+            address.surname = billingAddress["surname"] as? String;
+            address.phoneNumber = billingAddress["phoneNumber"] as? String;
+            address.streetAddress = billingAddress["streetAddress"] as? String;
+            address.extendedAddress = billingAddress["extendedAddress"] as? String;
+            address.locality = billingAddress["locality"] as? String;
+            address.region = billingAddress["region"] as? String;
+            address.postalCode = billingAddress["postalCode"] as? String;
+            address.countryCodeAlpha2 = billingAddress["countryCodeAlpha2"] as? String;
+            threeDSecureRequest.billingAddress = address
+            
+            // Optional additional information.
+            // For best results, provide as many of these elements as possible.
+            let info = BTThreeDSecureAdditionalInformation()
+            info.shippingAddress = address
+            threeDSecureRequest.additionalInformation = info
+        }
+        
+        if let amount = cardInfo["amount"] as? String {
+            threeDSecureRequest.threeDSecureRequestDelegate = self
+            threeDSecureRequest.amount = NSDecimalNumber(string: amount)
+        }
+        
+        var deviceData: String?
+        if let collectDeviceData = bool(for: "collectDeviceData", in: call), collectDeviceData {
+            deviceData = PPDataCollector.collectPayPalDeviceData()
+        }
+        
+        paymentFlowClient.startPaymentFlow(threeDSecureRequest) { flowResult, error in
+            if error != nil {
+                self.handleResult(error: error, flutterResult: result)
+            } else if let threeDSecureResult: BTThreeDSecureResult = flowResult as? BTThreeDSecureResult, let cardNonce = threeDSecureResult.tokenizedCard {
+                
+                self.handleResult(nonce: cardNonce, flutterResult: result)
+            }
+        }
+    }
+    
     private func setupApplePay(flutterResult: FlutterResult) {
         let paymentRequest = PKPaymentRequest()
         if let supportedNetworksValueArray = applePayInfo["supportedNetworks"] as? [Int] {
@@ -147,7 +221,7 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
             return;
         }
         paymentRequest.paymentSummaryItems = paymentSummaryItems;
-
+        
         guard let applePayController = PKPaymentAuthorizationViewController(paymentRequest: paymentRequest) else {
             self.isHandlingResult = false
             os_log("Braintree:Handle:applePayController is null", type: .error)
@@ -169,14 +243,6 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
         }
     }
     
-    public func paymentDriver(_ driver: Any, requestsPresentationOf viewController: UIViewController) {
-        
-    }
-    
-    public func paymentDriver(_ driver: Any, requestsDismissalOf viewController: UIViewController) {
-        
-    }
-
     private func handleApplePayResult(_ result: BTPaymentMethodNonce, flutterResult: FlutterResult) {
         flutterResult(["paymentMethodNonce": buildPaymentNonceDict(nonce: result)])
     }
@@ -210,7 +276,7 @@ extension FlutterBraintreeCustomPlugin: PKPaymentAuthorizationViewControllerDele
             completion(PKPaymentAuthorizationResult(status: .success, errors: nil))
         }
     }
-
+    
     public func paymentAuthorizationViewController(_ controller: PKPaymentAuthorizationViewController, didAuthorizePayment payment: PKPayment, completion: @escaping (PKPaymentAuthorizationStatus) -> Void) {
         
         self.isHandlingResult = false
@@ -229,3 +295,14 @@ extension FlutterBraintreeCustomPlugin: PKPaymentAuthorizationViewControllerDele
         }
     }
 }
+
+extension FlutterBraintreeCustomPlugin {
+    public func paymentDriver(_ driver: Any, requestsPresentationOf viewController: UIViewController) {
+        UIApplication.shared.keyWindow?.rootViewController?.present(viewController, animated: true, completion: nil)
+    }
+
+    public func paymentDriver(_ driver: Any, requestsDismissalOf viewController: UIViewController) {
+        viewController.dismiss(animated: true, completion: nil)
+    }
+}
+
