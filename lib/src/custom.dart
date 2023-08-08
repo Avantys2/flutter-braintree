@@ -63,9 +63,6 @@ class Braintree {
   static Future<bool> userCanPay(
     String authorization,
   ) async {
-    if (Platform.isAndroid) {
-      return true;
-    }
     final result = await _kChannel.invokeMethod('userCanPay', {
       'authorization': authorization,
     });
@@ -129,6 +126,19 @@ class Braintree {
     BraintreeGooglePaymentRequest request,
   ) async {
     final result = await _kChannel.invokeMethod('requestGooglePayNonce', {
+      'authorization': authorization,
+      'request': request.toJson(),
+    });
+    if (result == null) return null;
+    return BraintreePaymentMethodNonce.fromJson(result);
+  }
+
+  static Future<BraintreePaymentMethodNonce?> requestCardNonce(
+    String authorization,
+    BraintreeTokenizedCardRequest request,
+  ) async {
+    final result =
+        await _kChannel.invokeMethod('requestThreeDSecureCardNonce', {
       'authorization': authorization,
       'request': request.toJson(),
     });

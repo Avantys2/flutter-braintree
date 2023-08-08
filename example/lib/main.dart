@@ -94,6 +94,12 @@ class _MyAppState extends State<MyApp> {
               },
               child: Text('TOKENIZE CREDIT CARD'),
             ),
+            ElevatedButton(
+              onPressed: () async {
+                payWithSavedCard(20);
+              },
+              child: Text('Saved token CREDIT CARD'),
+            ),
             if (Platform.isIOS)
               ElevatedButton(
                 onPressed: () async {
@@ -143,6 +149,35 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
     );
+  }
+
+  Future<void> payWithSavedCard(double amount) async {
+    final request = BraintreeCreditCardRequest(
+      cardNumber: '4111111111111111',
+      expirationMonth: '12',
+      expirationYear: '2021',
+      cvv: '123',
+    );
+    final result = await Braintree.tokenizeCreditCard(
+      tokenizationKey,
+      request,
+    );
+
+    if (result == null) throw "result tokenized is null";
+
+    final cardRequest = BraintreeTokenizedCardRequest(
+      amount: amount.toString(),
+      token: result.nonce,
+    );
+
+    final cardResult = await Braintree.requestCardNonce(
+      tokenizationKey,
+      cardRequest,
+    );
+
+    if (cardResult != null) {
+      showNonce(cardResult);
+    }
   }
 
   Future<void> payWithApplePay(

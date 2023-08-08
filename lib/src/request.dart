@@ -129,6 +129,24 @@ class BraintreeBillingAddress {
       };
 }
 
+class BraintreeTokenizedCardRequest {
+  BraintreeTokenizedCardRequest({
+    required this.amount,
+    required this.token,
+  });
+
+  /// Total price for item
+  String amount;
+
+  /// tolen for selected card
+  String token;
+
+  Map<String, dynamic> toJson() => {
+        'amount': amount,
+        'token': token,
+      };
+}
+
 class BraintreeCreditCardRequest {
   BraintreeCreditCardRequest({
     required this.cardNumber,

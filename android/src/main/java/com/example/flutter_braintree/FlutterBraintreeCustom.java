@@ -67,6 +67,7 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
                     break;
                 case "userCanPay":
                     googlePayClient = new GooglePayClient(this, braintreeClient);
+                    googlePayClient.setListener(this);
                     userCanPay();
                     break;
                 default:
@@ -174,7 +175,11 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
         googlePayClient.isReadyToPay(this, (isReadyToPay, error) -> {
             Log.i("Braintree", "isUserCanPay:" + isReadyToPay);
             Intent result = new Intent();
-            result.putExtra("isUserCanPay", isReadyToPay);
+
+            result.putExtra("type", "userCanPay");
+            HashMap<String, Object> paymentInfo = new HashMap<>();
+            paymentInfo.put("isUserCanPay", isReadyToPay);
+            result.putExtra("paymentInfo", paymentInfo);
             if (error != null) {
                 setResult(RESULT_CANCELED, result);
                 finish();
@@ -193,13 +198,25 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
         String merchantID = intent.getStringExtra("googleMerchantID");
         String totalPrice = intent.getStringExtra("totalPrice");
         String currencyCode = intent.getStringExtra("currencyCode");
+
+//        JSONArray cardAllowedAuthMethods = new JSONArray()
+//                .put("PAN_ONLY")
+//                .put("CRYPTOGRAM_3DS");
+//        googlePayRequest.setAllowedCardNetworks("CARD", cardAllowedCardNetworks);
+
+//        googlePayRequest.setEnvironment("TEST");
+
         googlePayRequest.setTransactionInfo(TransactionInfo.newBuilder()
                 .setTotalPrice(totalPrice)
                 .setTotalPriceStatus(WalletConstants.TOTAL_PRICE_STATUS_FINAL)
                 .setCurrencyCode(currencyCode)
                 .build());
         googlePayRequest.setEmailRequired(true);
-        googlePayRequest.setGoogleMerchantName(merchantID);
+
+        if (merchantID != "") {
+            googlePayRequest.setGoogleMerchantName(merchantID);
+        }
+
         googlePayClient.isReadyToPay(this, (isReadyToPay, e) -> {
             if (isReadyToPay) {
                 googlePayClient.requestPayment(this, googlePayRequest);
@@ -254,7 +271,8 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
                     callback.onResult(false);
                     return;
                 }
-//                boolean hasAmount = (dropInRequest.getThreeDSecureRequest() != null && !TextUtils.isEmpty(dropInRequest.getThreeDSecureRequest().getAmount()));
+
+                Log.d("Braintree", "configuration:" + configuration.toJson());
                 boolean shouldRequestThreeDSecureVerification = configuration.isThreeDSecureEnabled();
                 callback.onResult(shouldRequestThreeDSecureVerification);
             });

@@ -156,22 +156,33 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
   public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
     Log.d("Braintree", "onActivityResult:resultCode=" + resultCode + ":requestCode=" + requestCode);
     if (activeResult == null) {
+      Log.e("Braintree", "activeResult == null");
       return false;
     }
 
+    if (data == null) {
+      Log.e("Braintree", "data == null");
+      return  false;
+    }
     switch (requestCode) {
       case CUSTOM_ACTIVITY_REQUEST_CODE:
         if (resultCode == Activity.RESULT_OK) {
+          Log.e("Braintree", "RESULT_OK");
           String type = data.getStringExtra("type");
+          Log.e("Braintree", "type= " + type);
           if (type.equals("paymentMethodNonce")) {
             activeResult.success(data.getSerializableExtra("paymentMethodNonce"));
+          } if (type.equals("userCanPay")) {
+            activeResult.success(data.getSerializableExtra("paymentInfo"));
           } else {
             Exception error = new Exception("Invalid activity result type.");
             activeResult.error("error", error.getMessage(), null);
           }
         } else if (resultCode == Activity.RESULT_CANCELED) {
+          Log.e("Braintree", "RESULT_CANCELED");
           activeResult.success(null);
         } else {
+          Log.e("Braintree", "Exception");
           Exception error = (Exception) data.getSerializableExtra("error");
           activeResult.error("error", error.getMessage(), null);
         }
