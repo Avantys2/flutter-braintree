@@ -1,16 +1,21 @@
 package com.example.flutter_braintree;
 
+import static android.app.Activity.RESULT_CANCELED;
+
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import java.io.Serializable;
 import java.util.Map;
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
+import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
@@ -24,6 +29,9 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
   private Activity activity;
   private Result activeResult;
 
+  private Context mContext;
+  private MethodChannel mMethodChannel;
+
   private FlutterBraintreeDropIn dropIn;
 
   public static void registerWith(Registrar registrar) {
@@ -35,12 +43,14 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
     registrar.addActivityResultListener(plugin);
     channel.setMethodCallHandler(plugin);
   }
-
   @Override
   public void onAttachedToEngine(FlutterPluginBinding binding) {
     Log.d("Braintree", "onAttachedToEngine");
-    final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "flutter_braintree.custom");
-    channel.setMethodCallHandler(this);
+
+    this.mContext = binding.getApplicationContext();
+    final BinaryMessenger messenger = binding.getBinaryMessenger();
+    mMethodChannel = new MethodChannel(messenger, "flutter_braintree.custom");
+    mMethodChannel.setMethodCallHandler(this);
 
     dropIn = new FlutterBraintreeDropIn();
     dropIn.onAttachedToEngine(binding);
@@ -49,9 +59,12 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
   @Override
   public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
     Log.d("Braintree", "onDetachedFromEngine");
+    mMethodChannel.setMethodCallHandler(null);
+    mMethodChannel = null;
     dropIn.onDetachedFromEngine(binding);
     dropIn = null;
   }
+
 
   @Override
   public void onAttachedToActivity(ActivityPluginBinding binding) {
@@ -135,6 +148,7 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
         intent.putExtra("totalPrice", (String) request.get("totalPrice"));
         intent.putExtra("currencyCode", (String) request.get("currencyCode"));
         intent.putExtra("billingAgreementDescription", (String) request.get("billingAgreementDescription"));
+        intent.putExtra("googleMerchantID", (String) request.get("googleMerchantID"));
         activity.startActivityForResult(intent, CUSTOM_ACTIVITY_REQUEST_CODE);
         break;
       }
@@ -164,21 +178,26 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
       Log.e("Braintree", "data == null");
       return  false;
     }
+    Log.d("Braintree", "activeResult = " + activeResult.toString());
     switch (requestCode) {
       case CUSTOM_ACTIVITY_REQUEST_CODE:
         if (resultCode == Activity.RESULT_OK) {
-          Log.e("Braintree", "RESULT_OK");
+          Log.d("Braintree", "RESULT_OK");
           String type = data.getStringExtra("type");
-          Log.e("Braintree", "type= " + type);
+          Log.d("Braintree", "type = " + type);
           if (type.equals("paymentMethodNonce")) {
-            activeResult.success(data.getSerializableExtra("paymentMethodNonce"));
+            Serializable object = data.getSerializableExtra("paymentMethodNonce");
+            Log.d("Braintree", "object = " + object);
+            activeResult.success(object);
+            Log.d("Braintree", "activeResult.success");
           } if (type.equals("userCanPay")) {
             activeResult.success(data.getSerializableExtra("paymentInfo"));
           } else {
             Exception error = new Exception("Invalid activity result type.");
+            Log.d("Braintree", "error = " + error.getMessage());
             activeResult.error("error", error.getMessage(), null);
           }
-        } else if (resultCode == Activity.RESULT_CANCELED) {
+        } else if (resultCode == RESULT_CANCELED) {
           Log.e("Braintree", "RESULT_CANCELED");
           activeResult.success(null);
         } else {
@@ -186,6 +205,7 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
           Exception error = (Exception) data.getSerializableExtra("error");
           activeResult.error("error", error.getMessage(), null);
         }
+        Log.d("Braintree", "clean");
         activeResult = null;
         return true;
       default:

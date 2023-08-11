@@ -39,6 +39,7 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
     private PayPalClient payPalClient;
     private GooglePayClient googlePayClient;
     private ThreeDSecureClient threeDSecureClient;
+    private GooglePayCardNonce googlePayNonce;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,10 +76,7 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
             }
         } catch (Exception e) {
             Log.e("Braintree", "onCreate:" + e);
-            Intent result = new Intent();
-            result.putExtra("error", e);
-            setResult(2, result);
-            finish();
+            onError(e);
         }
     }
 
@@ -181,9 +179,7 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
             paymentInfo.put("isUserCanPay", isReadyToPay);
             result.putExtra("paymentInfo", paymentInfo);
             if (error != null) {
-                setResult(RESULT_CANCELED, result);
-                finish();
-                return;
+                onError(error);
             } else {
                 setResult(RESULT_OK, result);
                 finish();
@@ -199,13 +195,6 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
         String totalPrice = intent.getStringExtra("totalPrice");
         String currencyCode = intent.getStringExtra("currencyCode");
 
-//        JSONArray cardAllowedAuthMethods = new JSONArray()
-//                .put("PAN_ONLY")
-//                .put("CRYPTOGRAM_3DS");
-//        googlePayRequest.setAllowedCardNetworks("CARD", cardAllowedCardNetworks);
-
-//        googlePayRequest.setEnvironment("TEST");
-
         googlePayRequest.setTransactionInfo(TransactionInfo.newBuilder()
                 .setTotalPrice(totalPrice)
                 .setTotalPriceStatus(WalletConstants.TOTAL_PRICE_STATUS_FINAL)
@@ -213,7 +202,7 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
                 .build());
         googlePayRequest.setEmailRequired(true);
 
-        if (merchantID != "") {
+        if (!merchantID.isEmpty()) {
             googlePayRequest.setGoogleMerchantName(merchantID);
         }
 
@@ -222,8 +211,7 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
                 googlePayClient.requestPayment(this, googlePayRequest);
             } else {
                 Log.d("Braintree", "Google pay is not ready");
-                setResult(RESULT_CANCELED);
-                finish();
+                onCancel();
             }
         });
     }
@@ -272,7 +260,7 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
                     return;
                 }
 
-                Log.d("Braintree", "configuration:" + configuration.toJson());
+                Log.d("Braintree", "configuration: " + configuration.toJson());
                 boolean shouldRequestThreeDSecureVerification = configuration.isThreeDSecureEnabled();
                 callback.onResult(shouldRequestThreeDSecureVerification);
             });
@@ -297,6 +285,7 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
     @Override
     public void onGooglePaySuccess(@NonNull PaymentMethodNonce paymentMethodNonce) {
         Log.i("Braintree", "onGooglePaySuccess:" + paymentMethodNonce);
+        this.googlePayNonce = (GooglePayCardNonce) paymentMethodNonce;
         shouldRequestThreeDSecureVerification(paymentMethodNonce, shouldRequestThreeDSecureVerification -> {
             if (shouldRequestThreeDSecureVerification) {
                 performThreeDSecureVerification(this, paymentMethodNonce);
@@ -328,10 +317,10 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
             nonceMap.put("paypalPayerId", paypalAccountNonce.getPayerId());
             nonceMap.put("typeLabel", "PayPal");
             nonceMap.put("description", paypalAccountNonce.getEmail());
-        } else if(paymentMethodNonce instanceof GooglePayCardNonce) {
-            GooglePayCardNonce googlePayCardNonce = (GooglePayCardNonce) paymentMethodNonce;
+        } else if(this.googlePayNonce != null) {
             nonceMap.put("typeLabel", "GooglePay");
-            nonceMap.put("description", googlePayCardNonce.getEmail());
+            nonceMap.put("description", this.googlePayNonce.getEmail());
+            this.googlePayNonce = null;
         } else if(paymentMethodNonce instanceof CardNonce){
             CardNonce cardNonce = (CardNonce) paymentMethodNonce;
             nonceMap.put("typeLabel", cardNonce.getCardType());
