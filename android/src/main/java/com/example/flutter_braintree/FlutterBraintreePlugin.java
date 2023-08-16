@@ -170,42 +170,35 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
   public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
     Log.d("Braintree", "onActivityResult:resultCode=" + resultCode + ":requestCode=" + requestCode);
     if (activeResult == null) {
-      Log.e("Braintree", "activeResult == null");
+      Log.e("Braintree", "onActivityResult:activeResult == null");
       return false;
     }
 
     if (data == null) {
-      Log.e("Braintree", "data == null");
+      Log.e("Braintree", "onActivityResult:data == null");
       return  false;
     }
-    Log.d("Braintree", "activeResult = " + activeResult.toString());
     switch (requestCode) {
       case CUSTOM_ACTIVITY_REQUEST_CODE:
         if (resultCode == Activity.RESULT_OK) {
-          Log.d("Braintree", "RESULT_OK");
           String type = data.getStringExtra("type");
-          Log.d("Braintree", "type = " + type);
+          Log.d("Braintree", "onActivityResult:type = " + type);
           if (type.equals("paymentMethodNonce")) {
-            Serializable object = data.getSerializableExtra("paymentMethodNonce");
-            Log.d("Braintree", "object = " + object);
-            activeResult.success(object);
-            Log.d("Braintree", "activeResult.success");
-          } if (type.equals("userCanPay")) {
+            activeResult.success(data.getSerializableExtra("paymentMethodNonce"));
+          } else if (type.equals("userCanPay")) {
             activeResult.success(data.getSerializableExtra("paymentInfo"));
           } else {
             Exception error = new Exception("Invalid activity result type.");
-            Log.d("Braintree", "error = " + error.getMessage());
+            Log.d("Braintree", "onActivityResult:error = " + error.getMessage());
             activeResult.error("error", error.getMessage(), null);
           }
         } else if (resultCode == RESULT_CANCELED) {
-          Log.e("Braintree", "RESULT_CANCELED");
           activeResult.success(null);
         } else {
-          Log.e("Braintree", "Exception");
           Exception error = (Exception) data.getSerializableExtra("error");
+          Log.e("Braintree", "onActivityResult:ExceptionError = " + error.getMessage());
           activeResult.error("error", error.getMessage(), null);
         }
-        Log.d("Braintree", "clean");
         activeResult = null;
         return true;
       default:
