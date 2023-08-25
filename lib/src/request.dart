@@ -186,6 +186,7 @@ class BraintreeGooglePaymentRequest {
     required this.currencyCode,
     this.billingAddressRequired = true,
     this.googleMerchantID,
+    this.googleMerchantName,
   });
 
   /// Total price of the payment.
@@ -200,12 +201,17 @@ class BraintreeGooglePaymentRequest {
   /// Google Merchant ID. Optional in sandbox, but if set, must be a valid production Google Merchant ID.
   String? googleMerchantID;
 
+  /// Google Merchant Name. Optional in sandbox.
+  String? googleMerchantName;
+
   /// Converts this request object into a JSON-encodable format.
   Map<String, dynamic> toJson() => {
         'totalPrice': totalPrice,
         'currencyCode': currencyCode,
         'billingAddressRequired': billingAddressRequired,
         if (googleMerchantID != null) 'googleMerchantID': googleMerchantID,
+        if (googleMerchantName != null)
+          'googleMerchantName': googleMerchantName,
       };
 }
 

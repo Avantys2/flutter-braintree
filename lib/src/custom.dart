@@ -75,8 +75,9 @@ class Braintree {
     String amount,
     String merchant,
     String currencyCode,
-    String countryCode,
-  ) async {
+    String countryCode, {
+    String? merchantName,
+  }) async {
     if (Platform.isAndroid) {
       final result = await Braintree.requestGooglePayNonce(
         authorization,
@@ -84,6 +85,7 @@ class Braintree {
           totalPrice: amount,
           currencyCode: currencyCode,
           googleMerchantID: merchant,
+          googleMerchantName: merchantName,
         ),
       );
       return result;
