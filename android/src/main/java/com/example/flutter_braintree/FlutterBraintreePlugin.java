@@ -149,6 +149,7 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
         intent.putExtra("currencyCode", (String) request.get("currencyCode"));
         intent.putExtra("billingAgreementDescription", (String) request.get("billingAgreementDescription"));
         intent.putExtra("googleMerchantID", (String) request.get("googleMerchantID"));
+        intent.putExtra("googleMerchantName", (String) request.get("googleMerchantName"));
         activity.startActivityForResult(intent, CUSTOM_ACTIVITY_REQUEST_CODE);
         break;
       }
@@ -173,14 +174,13 @@ public class FlutterBraintreePlugin implements FlutterPlugin, ActivityAware, Met
       Log.e("Braintree", "onActivityResult:activeResult == null");
       return false;
     }
-
-    if (data == null) {
-      Log.e("Braintree", "onActivityResult:data == null");
-      return  false;
-    }
     switch (requestCode) {
       case CUSTOM_ACTIVITY_REQUEST_CODE:
         if (resultCode == Activity.RESULT_OK) {
+          if (data == null) {
+            Log.e("Braintree", "onActivityResult:data == null");
+            return  false;
+          }
           String type = data.getStringExtra("type");
           Log.d("Braintree", "onActivityResult:type = " + type);
           if (type.equals("paymentMethodNonce")) {
