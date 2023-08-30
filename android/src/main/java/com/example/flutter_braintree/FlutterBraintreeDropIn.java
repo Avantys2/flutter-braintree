@@ -12,6 +12,7 @@ import io.flutter.plugin.common.PluginRegistry.Registrar;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.util.Log;
 
 
 import androidx.annotation.Nullable;
@@ -26,6 +27,10 @@ import com.braintreepayments.api.ThreeDSecurePostalAddress;
 import com.braintreepayments.api.ThreeDSecureRequest;
 import com.google.android.gms.wallet.TransactionInfo;
 import com.google.android.gms.wallet.WalletConstants;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -122,14 +127,9 @@ public class FlutterBraintreeDropIn  implements FlutterPlugin, ActivityAware, Me
 
 
       DropInRequest dropInRequest = new DropInRequest();
-
       dropInRequest.setVaultManagerEnabled((Boolean) call.argument("vaultManagerEnabled"));
       dropInRequest.setThreeDSecureRequest(threeDSecureRequest);
       dropInRequest.setMaskCardNumber((Boolean) call.argument("maskCardNumber"));
-
-
-      //.collectDeviceData((Boolean) call.argument("collectDeviceData"))
-      // .requestThreeDSecureVerification((Boolean) call.argument("requestThreeDSecureVerification"))
 
       readGooglePaymentParameters(dropInRequest, call);
       readPayPalParameters(dropInRequest, call);
@@ -154,20 +154,71 @@ public class FlutterBraintreeDropIn  implements FlutterPlugin, ActivityAware, Me
     }
   }
 
-  private static void readGooglePaymentParameters(DropInRequest dropInRequest, MethodCall call) {
+  private void readGooglePaymentParameters(DropInRequest dropInRequest, MethodCall call) {
     HashMap<String, Object> arg = call.argument("googlePaymentRequest");
     if (arg == null) {
       dropInRequest.setGooglePayDisabled(true);
       return;
     }
+
+    String merchantID = (String) arg.get("googleMerchantID");
+    String totalPrice = (String) arg.get("totalPrice");
+    String currencyCode = (String) arg.get("currencyCode");
+    String merchantName = (String) arg.get("googleMerchantName");
+
     GooglePayRequest googlePayRequest = new GooglePayRequest();
     googlePayRequest.setTransactionInfo(TransactionInfo.newBuilder()
-            .setTotalPrice((String) arg.get("totalPrice"))
+            .setTotalPrice(totalPrice)
             .setTotalPriceStatus(WalletConstants.TOTAL_PRICE_STATUS_FINAL)
-            .setCurrencyCode((String) arg.get("currencyCode"))
+            .setCurrencyCode(currencyCode)
             .build());
     googlePayRequest.setBillingAddressRequired(true);
+    Log.d("Braintree:DropIn", "old request = " +  googlePayRequest.toJson());
+    googlePayRequest = this.setupConfiguration(googlePayRequest);
+
+    if (merchantName != null) {
+      googlePayRequest.setGoogleMerchantName(merchantName);
+    }
+
+    if (!merchantID.isEmpty() && !merchantID.isEmpty())  {
+      googlePayRequest.setGoogleMerchantId(merchantID);
+      googlePayRequest.setEnvironment("PRODUCTION");
+    }
+
+    //.collectDeviceData((Boolean) call.argument("collectDeviceData"))
+    // .requestThreeDSecureVerification((Boolean) call.argument("requestThreeDSecureVerification"))
+//
+//    String email = call.argument("email");
+
+//    Log.d("Braintree:DropIn", "ThreeDSecure = " + );
     dropInRequest.setGooglePayRequest(googlePayRequest);
+  }
+
+  private GooglePayRequest setupConfiguration(GooglePayRequest request) {
+
+    if (request.getAllowedPaymentMethod("CARD") == null) {
+      Log.d("Braintree:DropIn", "setup methods");
+
+      JSONArray allowedCardNetworks = new JSONArray();
+      allowedCardNetworks
+              .put("VISA")
+              .put("AMEX")
+              .put("MASTERCARD");
+
+      JSONArray allowedAuthMethods = new JSONArray();
+      allowedAuthMethods
+              .put("CRYPTOGRAM_3DS")
+              .put("PAN_ONLY");
+      try {
+        request.setAllowedPaymentMethod("CARD",new JSONObject()
+                .put("allowedAuthMethods", allowedAuthMethods)
+                .put("allowedCardNetworks", allowedCardNetworks));
+
+      } catch (JSONException exception) {
+        Log.d("Braintree:DropIn", "exception :" + exception.getMessage());
+      }
+    }
+    return  request;
   }
 
   private static void readPayPalParameters(DropInRequest dropInRequest, MethodCall call) {
