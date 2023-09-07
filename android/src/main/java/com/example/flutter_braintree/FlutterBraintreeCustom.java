@@ -218,7 +218,6 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
 
         if (!merchantID.isEmpty()) {
             googlePayRequest.setGoogleMerchantId(merchantID);
-//            googlePayRequest.setEnvironment("PRODUCTION");
         }
         Log.d("Braintree:Custom", "updated config = " +  googlePayRequest.toJson());
 
@@ -301,7 +300,6 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
                     return;
                 }
 
-                Log.d("Braintree:Custom", "configuration: " + configuration.toJson());
                 boolean shouldRequestThreeDSecureVerification = configuration.isThreeDSecureEnabled();
                 callback.onResult(shouldRequestThreeDSecureVerification);
             });
@@ -319,7 +317,6 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
         if (paymentMethodNonce instanceof GooglePayCardNonce) {
             return !((GooglePayCardNonce) paymentMethodNonce).isNetworkTokenized();
         }
-
         return false;
     }
 
@@ -361,7 +358,6 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
         } else if(this.googlePayNonce != null) {
             nonceMap.put("typeLabel", "GooglePay");
             nonceMap.put("description", this.googlePayNonce.getEmail());
-            this.googlePayNonce = null;
         } else if(paymentMethodNonce instanceof CardNonce){
             CardNonce cardNonce = (CardNonce) paymentMethodNonce;
             nonceMap.put("typeLabel", cardNonce.getCardType());
@@ -372,6 +368,7 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
         result.putExtra("paymentMethodNonce", nonceMap);
         setResult(RESULT_OK, result);
         finish();
+        this.googlePayNonce = null;
     }
 
     public void onCancel() {
