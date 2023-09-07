@@ -222,12 +222,16 @@ public class FlutterBraintreeCustom extends AppCompatActivity implements PayPalL
         Log.d("Braintree:Custom", "updated config = " +  googlePayRequest.toJson());
 
         GooglePayRequest finalGooglePayRequest = googlePayRequest;
-        googlePayClient.isReadyToPay(this, (isReadyToPay, e) -> {
+        googlePayClient.isReadyToPay(this, (isReadyToPay, error) -> {
+            if (error != null) {
+                onError(error);
+                return;
+            }
             if (isReadyToPay) {
                 googlePayClient.requestPayment(this, finalGooglePayRequest);
             } else {
-                Log.d("Braintree:Custom", "Google pay is not ready");
-                onCancel();
+                Exception exception = new Exception("Payment with Google Pay is currently unavailable.");
+                onError(exception);
             }
         });
     }
