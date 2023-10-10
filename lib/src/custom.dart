@@ -61,10 +61,19 @@ class Braintree {
   }
 
   static Future<bool> userCanPay(
-    String authorization,
-  ) async {
+    String authorization, {
+    List<ApplePaySupportedNetworks>? supportedAppleNetworks,
+  }) async {
+    final supportedNetworks = supportedAppleNetworks ??
+        [
+          ApplePaySupportedNetworks.visa,
+          ApplePaySupportedNetworks.masterCard,
+          ApplePaySupportedNetworks.amex,
+          ApplePaySupportedNetworks.discover,
+        ];
     final result = await _kChannel.invokeMethod('userCanPay', {
       'authorization': authorization,
+      'supportedNetworks': supportedNetworks.map((e) => e.rawValue).toList(),
     });
     if (result == null) return false;
     return result['isUserCanPay'];
@@ -77,6 +86,7 @@ class Braintree {
     String currencyCode,
     String countryCode, {
     String? merchantName,
+    List<ApplePaySupportedNetworks>? supportedAppleNetworks,
   }) async {
     if (Platform.isAndroid) {
       final result = await Braintree.requestGooglePayNonce(
@@ -92,17 +102,18 @@ class Braintree {
     } else if (Platform.isIOS) {
       final item = ApplePaySummaryItem(
         amount: double.parse(amount),
-        label: 'Total price',
+        label: merchantName ?? 'Total price',
         type: ApplePaySummaryItemType.final_,
       );
 
       final paymentSummaryItems = <ApplePaySummaryItem>[item];
-      final supportedNetworks = [
-        ApplePaySupportedNetworks.visa,
-        ApplePaySupportedNetworks.masterCard,
-        ApplePaySupportedNetworks.amex,
-        ApplePaySupportedNetworks.discover,
-      ];
+      final supportedNetworks = supportedAppleNetworks ??
+          [
+            ApplePaySupportedNetworks.visa,
+            ApplePaySupportedNetworks.masterCard,
+            ApplePaySupportedNetworks.amex,
+            ApplePaySupportedNetworks.discover,
+          ];
 
       const displayName = '';
 

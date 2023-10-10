@@ -100,8 +100,11 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
             os_log("Braintree:Handle:requestCardNonce", type: .debug)
             setupCardNonce(call, result: result)
         } else if call.method == "userCanPay" {
-            let paymentNetworks: [PKPaymentNetwork] = [.visa, .masterCard, .amex, .discover]
-            let isAvailable = PKPaymentAuthorizationViewController.canMakePayments(usingNetworks: paymentNetworks)
+            var isAvailable = false
+            if let supportedNetworksValueArray = array(for: "supportedNetworks", in: call) as? [Int] {
+                let paymentNetworks = parseSupportedNetworks(supportedNetworks: supportedNetworksValueArray)
+                isAvailable = PKPaymentAuthorizationViewController.canMakePayments(usingNetworks: paymentNetworks)
+            }
             self.isHandlingResult = false
             result(["isUserCanPay" : isAvailable])
         } else {
@@ -194,12 +197,17 @@ public class FlutterBraintreeCustomPlugin: BaseFlutterBraintreePlugin, FlutterPl
         }
     }
     
+    private func parseSupportedNetworks(supportedNetworks supportedNetworksValueArray: [Int]) -> [PKPaymentNetwork] {
+        let paymentNetworks: [PKPaymentNetwork] = supportedNetworksValueArray.compactMap({ value in
+            return PKPaymentNetwork.mapRequestedNetwork(rawValue: value)
+        })
+        return paymentNetworks
+    }
+    
     private func setupApplePay(flutterResult: FlutterResult) {
         let paymentRequest = PKPaymentRequest()
         if let supportedNetworksValueArray = applePayInfo["supportedNetworks"] as? [Int] {
-            let paymentNetworks: [PKPaymentNetwork] = supportedNetworksValueArray.compactMap({ value in
-                return PKPaymentNetwork.mapRequestedNetwork(rawValue: value)
-            })
+            let paymentNetworks = parseSupportedNetworks(supportedNetworks: supportedNetworksValueArray)
             let isAvailable = PKPaymentAuthorizationViewController.canMakePayments(usingNetworks: paymentNetworks)
             guard isAvailable else {
                 self.isHandlingResult = false
