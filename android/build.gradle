@@ -5,18 +5,17 @@ buildscript {
     repositories {
         google()
         mavenCentral()
-        jcenter()
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:4.1.0'
+        classpath 'com.android.tools.build:gradle:7.4.2'
     }
 }
 
 rootProject.allprojects {
     repositories {
         google()
-        jcenter()
+        mavenCentral()
         maven {
             url "https://cardinalcommerceprod.jfrog.io/artifactory/android"
             credentials {
@@ -30,7 +29,7 @@ rootProject.allprojects {
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 28
+    compileSdk 34
 
     defaultConfig {
         minSdkVersion 21
@@ -43,14 +42,15 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+    namespace 'com.example.flutter_braintree'
 }
 
 dependencies {
-    implementation 'com.braintreepayments.api:drop-in:6.11.0'
-    implementation 'com.braintreepayments.api:google-pay:4.36.0'
-    implementation 'com.google.android.gms:play-services-wallet:19.2.0'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
+    implementation 'com.braintreepayments.api:drop-in:6.16.0'
+
+    implementation 'com.google.android.gms:play-services-wallet:19.4.0'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     components.all {
         allVariants {
             withDependencies { deps ->
